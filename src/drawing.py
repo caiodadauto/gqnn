@@ -1,11 +1,15 @@
+import os
+
 import networkx as nx
 import seaborn as sns
 import matplotlib.pyplot as plt
 
 from .utils import from_data
 
-def draw_graphs(data):
-    graphs = from_data(data)
+def draw_batch(batch, path):
+    if note os.path.isdir(path):
+        os.makedirs(path)
+    graphs = from_data(batch)
     n_graphs = len(graphs)
     fig, axs = plt.subplots(1, n_graphs, dpi=120, figsize=(12, 8))
     for G, ax in zip(graphs, axs):
@@ -58,39 +62,4 @@ def draw_graphs(data):
             G,
             pos,
             ax=ax)
-    plt.save
-
-def plot_data(data):
-    graphs = []
-    x = data.x.numpy()
-    y = data.y.numpy()
-    num_routers = data.num_routers.numpy()
-    num_interfaces = data.num_interfaces.numpy()
-    num_all_edges = data.num_all_edges.numpy()
-    edge_index = data.edge_index.t().numpy()
-
-    cum_num_edges = np.cumsum(num_all_edges, axis=0)
-    cum_num_nodes = np.cumsum(num_routers + num_interfaces, axis=0)
-    cum_num_interfaces = np.cumsum(num_interfaces, axis=0)
-    edge_bounds = np.stack([np.concatenate([[0], cum_num_edges])[:-1], cum_num_edges]).T
-    node_bounds = np.stack([np.concatenate([[0], cum_num_nodes])[:-1], cum_num_nodes]).T
-    interface_bounds = np.stack([np.concatenate([[0], cum_num_interfaces])[:-1], cum_num_interfaces]).T
-    for n, ((sn, en), (se, ee), (si, ei)) in enumerate(zip(node_bounds, edge_bounds, interface_bounds)):
-        translate = dict(zip(range(sn, en), range(en - sn)))
-        nodes = [(i, dict(features=f)) for i, f in enumerate(x[sn:en])]
-        edges = [(translate[s], translate[r]) for s, r in edge_index[se:ee]]
-        for out, (_, d) in zip(y[si:ei], nodes[-num_interfaces[n]:]):
-            d["out"] = int(out)
-        target_ip = data.targets[n].numpy()
-        for i, d in nodes:
-            if np.all(target_ip == d["features"]):
-                target_idx = i
-                break
-
-        G = nx.DiGraph()
-        G.add_nodes_from(nodes)
-        G.add_edges_from(edges)
-        G.graph["num_interfaces"] = int(data.num_interfaces[n])
-        G.graph["target"] = target_idx
-        graphs.append(G)
-    draw_graphs(graphs)
+    plt.savefig(os.path.join(path, "graphs.png")

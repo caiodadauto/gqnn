@@ -1,7 +1,10 @@
+import time
+
 import torch
 import numpy as np
 import networkx as nx
 from torch_geometric.data import Data
+from sklearn.metrics import balanced_accuracy_score
 
 
 def from_networkx(G, G_target):
@@ -74,3 +77,62 @@ def from_data(data):
         G.graph["target"] = target_idx
         graphs.append(G)
     return graphs
+
+def save_model(model, optimizer, loss, n_batch, epoch, duration, path, best):
+    path = os.path.join(path, "checkpoint/")
+    if not os.path.isdir(path):
+        os.makedirs(path)
+
+    env_state = {'duration': duration,
+                 'epoch': epoch,
+                 'n_batch':n_batch,
+                 'loss': loss,
+                 'model_state_dict': model.state_dict(),
+                 'optimizer_state_dict': optimizer.state_dict()}
+    if best:
+        torch.save(model.state_dict(), path + "env_state_best.pt")
+    torch.save(optimizer.state_dict(), path + "env_state.pt")
+
+def save_info(duration, n_batch, loss, acc, path):
+    if not os.path.isdir(path):
+        os.makedirs(path)
+    with open(os.path.join(path, "info.csv"), "a") as f:
+        f.write("{:.2f},{:d},{:.5f},{:.5f}\n".format(duration, n_batch, loss, acc))
+
+def train_step(model, data, optimizer, loss_fn):
+    optimizer.zero_grad()
+    output = model(data)
+    label = data.y
+    loss = loss_fn(output, label)
+    loss.backward()
+    optimizer.step()
+    label_np = data.y.detach().cpu().numpy()
+    output_np = output.detach().cpu().numpy()
+    return loss.item(), np.array(output_np > .35, dtype=int), label
+
+def train(device, model, loader, optimizer, scheduler, loss_fn, path, dt=20, time_offset=0):
+    n_batch = 1
+    best_acc = 0
+    best_loss = np.Inf
+
+    model.train()
+    start_time = time.time()
+    last_log_time = start_time
+    for data in tqdm(loader):
+        data = data.to(device)
+        loss, output, label = train_step(model, data, optimizer, loss_fn)
+        current_time = time.time()
+        if current_time - last_log_time > dt:
+            last_log_time = current_time
+            duration = current_time - start_time + time_offset
+            acc = balanced_accuracy_score(label, output)
+            if best_loss > loss and best_acc < acc:
+                best_loss = loss
+                best_acc = acc
+                best = True
+            else:
+                best = False
+            save_model(model, optimizer, loss, n_batch, 1, , path, best)
+            save_info(duration, n_batch, loss, acc, path)
+        scheduler.step()
+        n_batch += 1
