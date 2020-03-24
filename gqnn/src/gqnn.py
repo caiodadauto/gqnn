@@ -40,8 +40,6 @@ class GRUmp(MessagePassing):
         return '{}({}, num_msg={})'.format(
             self.__class__.__name__, self.out_channels, self.num_layers)
 
-
-
 class QGNN(torch.nn.Module):
     def __init__(self,
                  out_channels=160,
