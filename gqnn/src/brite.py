@@ -25,6 +25,9 @@ class Brite(Dataset):
         os.makedirs(self.raw_dir, exist_ok=True)
         if self.raw_paths == []:
             self.download()
+        os.makedirs(self.processed_dir, exist_ok=True)
+        if self.processed_paths == []:
+            self.process()
 
     @property
     def raw_file_names(self):
