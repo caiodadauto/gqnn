@@ -14,11 +14,8 @@ from .utils import from_networkx
 
 
 class Brite(Dataset):
-    def __init__(self, root, transform=None, pre_transform=None, type_db="train", version="v1.0", id_folder="", secrets_path=None):
-        self.version = version
+    def __init__(self, root, transform=None, pre_transform=None, type_db="train"):#, version="v1.0", id_folder="", secrets_path=None):
         self.type_db = type_db
-        self.id_folder = id_folder
-        self.secrets_path = secrets_path
         super(Brite, self).__init__(root, transform, pre_transform)
 
         # TODO: pull request for changing behaviour of 'files_exists' in torch_geometric.data.dataset
@@ -28,6 +25,14 @@ class Brite(Dataset):
         os.makedirs(self.processed_dir, exist_ok=True)
         if self.processed_paths == []:
             self.process()
+
+    @property
+    def raw_dir(self):
+        return os.path.join(self.root, self.type_db)
+
+    @property
+    def processed_dir(self):
+        return os.path.join(self.root, self.type_db + '_processed')
 
     @property
     def raw_file_names(self):
@@ -52,27 +57,28 @@ class Brite(Dataset):
         return n_interval, m_interval
 
     def download(self):
-        tmp_path = "/tmp/"
-        clone_path = os.path.join(tmp_path, "pybrite/")
+        raise ValueError("There are not any raw data in the {}. Try to download the data in 'bspf' directory.".format(self.raw_dir))
+        # tmp_path = "/tmp/"
+        # clone_path = os.path.join(tmp_path, "pybrite/")
 
 
-        cmd_clone = ["git", "clone", "https://github.com/caiodadauto/pybrite.git", clone_path]
-        cmd_cp_secrets = ["cp", self.secrets_path, clone_path]
-        cmd_download = ["python3", "drive_db.py", tmp_path, "--download", "--id-folder", self.id_folder]
-        cmd_checkout = ["git", "checkout", self.version, "dataset.dvc"]
-        cmd_pull = ["dvc", "pull"]
-        cmd_cp_data = "cp {} {}".format(os.path.join(clone_path, "dataset", self.type_db, "*"), self.raw_dir)
+        # cmd_clone = ["git", "clone", "https://github.com/caiodadauto/pybrite.git", clone_path]
+        # cmd_cp_secrets = ["cp", self.secrets_path, clone_path]
+        # cmd_download = ["python3", "drive_db.py", tmp_path, "--download", "--id-folder", self.id_folder]
+        # cmd_checkout = ["git", "checkout", self.version, "dataset.dvc"]
+        # cmd_pull = ["dvc", "pull"]
+        # cmd_cp_data = "cp {} {}".format(os.path.join(clone_path, "dataset", self.type_db, "*"), self.raw_dir)
 
-        try:
-            sub.run(cmd_clone)
-        except:
-            pass
-        sub.run(cmd_cp_secrets)
-        if not os.path.isdir(os.path.join(tmp_path, "topologies")):
-            sub.run(cmd_download, cwd=clone_path)
-        sub.run(cmd_checkout, cwd=clone_path)
-        sub.run(cmd_pull, cwd=clone_path)
-        sub.call(cmd_cp_data, shell=True)
+        # try:
+        #     sub.run(cmd_clone)
+        # except:
+        #     pass
+        # sub.run(cmd_cp_secrets)
+        # if not os.path.isdir(os.path.join(tmp_path, "topologies")):
+        #     sub.run(cmd_download, cwd=clone_path)
+        # sub.run(cmd_checkout, cwd=clone_path)
+        # sub.run(cmd_pull, cwd=clone_path)
+        # sub.call(cmd_cp_data, shell=True)
 
     def process(self):
         for i, raw_path in enumerate(self.raw_paths):
