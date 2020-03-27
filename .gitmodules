@@ -1,0 +1,3 @@
+[submodule "bspf"]
+	path = bspf
+	url = https://github.com/caiodadauto/bspf
