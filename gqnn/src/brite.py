@@ -14,7 +14,7 @@ from .utils import from_networkx
 
 
 class Brite(Dataset):
-    def __init__(self, root, transform=None, pre_transform=None, type_db="train"):#, version="v1.0", id_folder="", secrets_path=None):
+    def __init__(self, root, transform=None, pre_transform=None, type_db=None):#, version="v1.0", id_folder="", secrets_path=None):
         self.type_db = type_db
         super(Brite, self).__init__(root, transform, pre_transform)
 
@@ -28,10 +28,14 @@ class Brite(Dataset):
 
     @property
     def raw_dir(self):
+        if not self.type_db:
+            return os.path.join(self.root, "raw")
         return os.path.join(self.root, self.type_db)
 
     @property
     def processed_dir(self):
+        if not self.type_db:
+            return os.path.join(self.root, "processed")
         return os.path.join(self.root, self.type_db + '_processed')
 
     @property

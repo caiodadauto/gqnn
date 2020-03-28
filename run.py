@@ -11,6 +11,7 @@ def run(root_path, data_path, type_db, batch_size, epochs, hidden_size, msgs, dr
     torch.manual_seed(seed)
     np.random.seed(seed)
 
+    type_db = None if type_db == "" else type_db
     dataset = Brite(data_path, type_db=type_db)
 
     if debug:
@@ -27,10 +28,10 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--root-path", type=str, default="assets/",
                    help="Directory where model and optimizer states, figures, and training information will be saved")
-    p.add_argument("--data-path", type=str, default="bspf/dataset/", help="Directory where dataset will be saved")
+    p.add_argument("--data-path", type=str, default="assets/", help="Directory where dataset will be saved")
     # p.add_argument("--secrets-path", type=str, default="client_secrets.json", help="Client secrets for drive manipulation")
     # p.add_argument("--version", type=str, default="v1.0", choices=["v1.0", "toy"], help="Verion of dataset that will be used")
-    p.add_argument("--type_db", type=str, default="train", choices=["train", "test_non_generalization", "test_generalization"],
+    p.add_argument("--type_db", type=str, default="train", choices=["", "train", "test_non_generalization", "test_generalization"],
                    help="Type of dataset")
     # p.add_argument("--id-folder", type=str, default="1DEHJZQC6AFoolUeQqC6NnwPVg0RFZ8iK", help="FolderID with dataset")
     p.add_argument("--batch-size", type=int, default=32, help="Batch size to be used in the training")
