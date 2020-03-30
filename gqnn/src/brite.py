@@ -43,7 +43,7 @@ class Brite(Dataset):
                 print("Getting raw data from " + self.raw_dir)
             self._raw_file_names = [p.split("/")[-1] for p in glob.glob(os.path.join(self.raw_dir, "*.gpickle"))]
             if self.debug:
-                print("Done {}".format(len(files)))
+                print("Done {}".format(len(self._raw_file_names)))
         return self._raw_file_names
 
     @property
@@ -54,7 +54,7 @@ class Brite(Dataset):
                 print("Getting processed data from " + self.processed_dir)
             self._processed_file_names = [p.split("/")[-1] for p in glob.glob(os.path.join(self.processed_dir, "data_*.pt"))]
             if self.debug:
-                print("Done {}".format(len(files)))
+                print("Done {}".format(len(self._processed_file_names)))
         return self._processed_file_names
 
     @property
