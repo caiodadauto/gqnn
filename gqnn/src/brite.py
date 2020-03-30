@@ -3,13 +3,13 @@ import re
 import sys
 import glob
 import subprocess as sub
-from pathlib import Path
 
 import torch
 import pandas as pd
 import pybrite as pb
 from tqdm import tqdm
-from torch_geometric.data import Dataset
+# from torch_geometric.data import Dataset
+from .dataset import Dataset
 
 from .utils import from_networkx
 
@@ -18,15 +18,10 @@ class Brite(Dataset):
     def __init__(self, root, transform=None, pre_transform=None, type_db=None, debug=False):#, version="v1.0", id_folder="", secrets_path=None):
         self.type_db = type_db
         self.debug = debug
+        self._size = None
+        self._raw_file_names = None
+        self._processed_file_names = None
         super(Brite, self).__init__(root, transform, pre_transform)
-
-        # TODO: pull request for changing behaviour of 'files_exists' in torch_geometric.data.dataset
-        os.makedirs(self.raw_dir, exist_ok=True)
-        if self.raw_paths == []:
-            self.download()
-        os.makedirs(self.processed_dir, exist_ok=True)
-        if self.processed_paths == []:
-            self.process()
 
     @property
     def raw_dir(self):
@@ -42,25 +37,25 @@ class Brite(Dataset):
 
     @property
     def raw_file_names(self):
-        if self.debug:
-            print("Getting raw data from " + self.raw_dir)
-
-        files = glob.glob(os.path.join(self.raw_dir, "*.gpickle"))
-
-        if self.debug:
-            print("Done {}".format(len(files)))
-        return files
+        if self._raw_file_names is None:
+            print("Call raw names")
+            if self.debug:
+                print("Getting raw data from " + self.raw_dir)
+            self._raw_file_names = [p.split("/")[-1] for p in glob.glob(os.path.join(self.raw_dir, "*.gpickle"))]
+            if self.debug:
+                print("Done {}".format(len(files)))
+        return self._raw_file_names
 
     @property
     def processed_file_names(self):
-        if self.debug:
-            print("Getting processed data from " + self.processed_dir)
-
-        files = glob.glob(os.path.join(self.processed_dir, "data_*.pt"))
-
-        if self.debug:
-            print("Done {}".format(len(files)))
-        return files
+        if self._processed_file_names is None:
+            print("Call processed names")
+            if self.debug:
+                print("Getting processed data from " + self.processed_dir)
+            self._processed_file_names = [p.split("/")[-1] for p in glob.glob(os.path.join(self.processed_dir, "data_*.pt"))]
+            if self.debug:
+                print("Done {}".format(len(files)))
+        return self._processed_file_names
 
     @property
     def info(self):
@@ -75,28 +70,7 @@ class Brite(Dataset):
         return n_interval, m_interval
 
     def download(self):
-        raise ValueError("There are not any raw data in the {}. Try to download the data in 'bspf' directory.".format(self.raw_dir))
-        # tmp_path = "/tmp/"
-        # clone_path = os.path.join(tmp_path, "pybrite/")
-
-
-        # cmd_clone = ["git", "clone", "https://github.com/caiodadauto/pybrite.git", clone_path]
-        # cmd_cp_secrets = ["cp", self.secrets_path, clone_path]
-        # cmd_download = ["python3", "drive_db.py", tmp_path, "--download", "--id-folder", self.id_folder]
-        # cmd_checkout = ["git", "checkout", self.version, "dataset.dvc"]
-        # cmd_pull = ["dvc", "pull"]
-        # cmd_cp_data = "cp {} {}".format(os.path.join(clone_path, "dataset", self.type_db, "*"), self.raw_dir)
-
-        # try:
-        #     sub.run(cmd_clone)
-        # except:
-        #     pass
-        # sub.run(cmd_cp_secrets)
-        # if not os.path.isdir(os.path.join(tmp_path, "topologies")):
-        #     sub.run(cmd_download, cwd=clone_path)
-        # sub.run(cmd_checkout, cwd=clone_path)
-        # sub.run(cmd_pull, cwd=clone_path)
-        # sub.call(cmd_cp_data, shell=True)
+        raise ValueError("There are not any raw data in the {}.".format(self.raw_dir))
 
     def process(self):
         for i, raw_path in enumerate(self.raw_paths):
@@ -106,7 +80,11 @@ class Brite(Dataset):
             torch.save(data, os.path.join(self.processed_dir, 'data_{}.pt'.format(i)))
 
     def len(self):
-        return len(self.processed_file_names)
+        if self._size is None:
+            self._size = len(self.processed_file_names)
+        else:
+            print("Skip")
+        return self._size
 
     def get(self, idx):
         data = torch.load(os.path.join(self.processed_dir, 'data_{}.pt'.format(idx)))

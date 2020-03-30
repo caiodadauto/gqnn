@@ -16,6 +16,7 @@ def run(root_path, data_path, type_db, batch_size, epochs, hidden_size, msgs, dr
 
     if debug:
         draw_batch(dataset, data_path)
+    print("Make loader")
     loader = DataLoader(dataset, batch_size=batch_size)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = QGNN(out_channels=hidden_size, num_msg=msgs, dropout_ratio=dropout_ratio).to(device)
