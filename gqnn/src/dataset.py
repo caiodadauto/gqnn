@@ -91,11 +91,9 @@ class Dataset(torch.utils.data.Dataset):
         self._raw_paths = None
         self._processed_paths = None
 
-        print("Checking Download")
         if 'download' in self.__class__.__dict__.keys():
             self._download()
 
-        print("Checking Process")
         if 'process' in self.__class__.__dict__.keys():
             self._process()
 
