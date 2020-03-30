@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import glob
 import subprocess as sub
 from pathlib import Path
 
@@ -14,7 +15,7 @@ from .utils import from_networkx
 
 
 class Brite(Dataset):
-    def __init__(self, root, transform=None, pre_transform=None, type_db=None):#, version="v1.0", id_folder="", secrets_path=None):
+    def __init__(self, root, transform=None, pre_transform=None, type_db=None, debug=False):#, version="v1.0", id_folder="", secrets_path=None):
         self.type_db = type_db
         super(Brite, self).__init__(root, transform, pre_transform)
 
@@ -40,13 +41,25 @@ class Brite(Dataset):
 
     @property
     def raw_file_names(self):
-        path = Path(self.raw_dir)
-        return [p.stem + ".gpickle" for p in path.glob("*.gpickle")]
+        if self.debug:
+            print("Getting raw data from " + self.raw_dir)
+
+        files = glob.glob(os.path.join(self.raw_dir, "*.gpickle"))
+
+        if self.debug:
+            print("Done")
+        return files
 
     @property
     def processed_file_names(self):
-        path = Path(self.processed_dir)
-        return [p.stem + ".pt" for p in path.glob("*.pt") if re.match(r"data_\d+", p.stem)]
+        if self.debug:
+            print("Getting processed data from " + self.processed_dir)
+
+        files = glob.glob(os.path.join(self.processed_dir, "data_*.pt"))
+
+        if self.debug:
+            print("Done")
+        return files
 
     @property
     def info(self):

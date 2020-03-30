@@ -12,7 +12,7 @@ def run(root_path, data_path, type_db, batch_size, epochs, hidden_size, msgs, dr
     np.random.seed(seed)
 
     type_db = None if type_db == "" else type_db
-    dataset = Brite(data_path, type_db=type_db)
+    dataset = Brite(data_path, type_db=type_db, debug=debug)
 
     if debug:
         draw_batch(dataset, data_path)
