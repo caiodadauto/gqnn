@@ -31,7 +31,7 @@ if __name__ == "__main__":
     p.add_argument("--data-path", type=str, default="assets/", help="Directory where dataset will be saved")
     # p.add_argument("--secrets-path", type=str, default="client_secrets.json", help="Client secrets for drive manipulation")
     # p.add_argument("--version", type=str, default="v1.0", choices=["v1.0", "toy"], help="Verion of dataset that will be used")
-    p.add_argument("--type_db", type=str, default="train", choices=["", "train", "test_non_generalization", "test_generalization"],
+    p.add_argument("--type_db", type=str, default="", choices=["", "train", "test_non_generalization", "test_generalization"],
                    help="Type of dataset")
     # p.add_argument("--id-folder", type=str, default="1DEHJZQC6AFoolUeQqC6NnwPVg0RFZ8iK", help="FolderID with dataset")
     p.add_argument("--batch-size", type=int, default=32, help="Batch size to be used in the training")

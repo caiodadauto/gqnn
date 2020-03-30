@@ -48,7 +48,7 @@ class Brite(Dataset):
         files = glob.glob(os.path.join(self.raw_dir, "*.gpickle"))
 
         if self.debug:
-            print("Done")
+            print("Done {}".format(len(files)))
         return files
 
     @property
@@ -59,7 +59,7 @@ class Brite(Dataset):
         files = glob.glob(os.path.join(self.processed_dir, "data_*.pt"))
 
         if self.debug:
-            print("Done")
+            print("Done {}".format(len(files)))
         return files
 
     @property
