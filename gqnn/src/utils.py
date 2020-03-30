@@ -151,8 +151,6 @@ def train(device, model, loader, optimizer, scheduler, loss_fn, epochs, path, dt
     start_time = time.time()
     last_log_time = start_time
     for epoch in range(n_epoch, epochs):
-
-        print("Train Step")
         for data in tqdm(loader):
             if n_batch > last_batch:
                 data = data.to(device)

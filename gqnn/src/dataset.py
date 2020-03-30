@@ -19,7 +19,8 @@ def to_list(x):
     return x
 
 def files_exist(files):
-    return all([os.path.exists(f) for f in files]) if len(files) else False
+    # return all([os.path.exists(f) for f in files]) if len(files) else False
+    return True if len(files) else False
 
 def __repr__(obj):
     if obj is None:
@@ -90,9 +91,11 @@ class Dataset(torch.utils.data.Dataset):
         self._raw_paths = None
         self._processed_paths = None
 
+        print("Checking Download")
         if 'download' in self.__class__.__dict__.keys():
             self._download()
 
+        print("Checking Process")
         if 'process' in self.__class__.__dict__.keys():
             self._process()
 
