@@ -17,6 +17,7 @@ from .utils import from_networkx
 class Brite(Dataset):
     def __init__(self, root, transform=None, pre_transform=None, type_db=None, debug=False):#, version="v1.0", id_folder="", secrets_path=None):
         self.type_db = type_db
+        self.debug = debug
         super(Brite, self).__init__(root, transform, pre_transform)
 
         # TODO: pull request for changing behaviour of 'files_exists' in torch_geometric.data.dataset
