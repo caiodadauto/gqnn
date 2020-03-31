@@ -124,7 +124,7 @@ def load_model(model, optimizer, path):
     best_loss = best_cp['loss']
     return last_batch, last_epoch, duration, best_acc, best_loss
 
-def train_step(model, data, optimizer, loss_fn):
+def train_step(model, data, optimizer, loss_fn, threshold):
     optimizer.zero_grad()
     output = model(data)
     label = data.y
@@ -133,9 +133,9 @@ def train_step(model, data, optimizer, loss_fn):
     optimizer.step()
     label_np = data.y.detach().cpu().numpy()
     output_np = output.detach().cpu().numpy()
-    return loss.item(), np.array(output_np > .35, dtype=int), label
+    return loss.item(), np.array(output_np > threshold, dtype=int), label
 
-def train(device, model, loader, optimizer, scheduler, loss_fn, epochs, path, dt=20):
+def train(device, model, loader, optimizer, scheduler, loss_fn, epochs, path, threshold=.35, dt=20):
     n_batch = 0
     n_epoch = 0
     best_acc = 0
@@ -154,7 +154,7 @@ def train(device, model, loader, optimizer, scheduler, loss_fn, epochs, path, dt
         for data in tqdm(loader):
             if n_batch > last_batch:
                 data = data.to(device)
-                loss, output, label = train_step(model, data, optimizer, loss_fn)
+                loss, output, label = train_step(model, data, optimizer, loss_fn, threshold)
                 current_time = time.time()
                 if current_time - last_log_time > dt:
                     last_log_time = current_time
@@ -170,3 +170,5 @@ def train(device, model, loader, optimizer, scheduler, loss_fn, epochs, path, dt
                     save_info(epoch, n_batch, duration, loss, acc, path)
                 scheduler.step()
             n_batch += 1
+        n_batch = 0
+        last_batch = 0
