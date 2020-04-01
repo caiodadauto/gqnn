@@ -23,7 +23,7 @@ def interval(s):
         raise argparse.ArgumentTypeError("Interval must be a sequence of integers splited by commas")
 
 def run(root_path, data_path, type_db, delta_time, seed, debug,
-        epochs, batch_size, hidden_size, msgs, dropout_ratio, init_lr, loss_fn, threshold, decay, milestones):
+        epochs, batch_size, hidden_size, msgs, dropout_ratio, packet_loss, init_lr, loss_fn, threshold, decay, milestones):
     torch.manual_seed(seed)
     np.random.seed(seed)
 
@@ -34,7 +34,7 @@ def run(root_path, data_path, type_db, delta_time, seed, debug,
         draw_batch(dataset, data_path)
     loader = DataLoader(dataset, batch_size=batch_size)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = QGNN(out_channels=hidden_size, num_msg=msgs, dropout_ratio=dropout_ratio).to(device)
+    model = QGNN(out_channels=hidden_size, num_msg=msgs, dropout_ratio=dropout_ratio, packet_loss=packet_loss).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=init_lr, weight_decay=5e-4)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=decay)
     train(device, model, loader, optimizer, scheduler, loss_fn, epochs, root_path, threshold, dt=delta_time)
@@ -57,6 +57,7 @@ if __name__ == "__main__":
     p.add_argument("--hidden-size", type=int, default=160, help="Latent dimension")
     p.add_argument("--msgs", type=int, default=20, help="Number of messages used for massage passing")
     p.add_argument("--dropout-ratio", type=float, default=.15, help="Probability to make zeros in the dropout's input tensor")
+    p.add_argument("--packet-loss", type=float, default=.15, help="Probability of losing packets")
     p.add_argument("--init-lr", type=float, default=.5, help="Initial learning rate")
     p.add_argument("--loss-fn", type=losses, default=torch.nn.BCELoss(), help="Loss function")
     p.add_argument("--threshold", type=float, default=.35, help="Threshold to decided if a link is for routing or not")

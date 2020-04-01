@@ -45,11 +45,13 @@ class QGNN(torch.nn.Module):
                  out_channels=160,
                  num_msg=20,
                  dropout_ratio=.15,
+                 packet_loss=.15,
                  **kwargs):
         super(QGNN, self).__init__()
         self.out_channels = out_channels
         self.num_msg = num_msg 
         self.dropout_ratio = dropout_ratio
+        self.packet_loss = packet_loss
 
         self.dmp = GRUmp(out_channels, **kwargs)
         self.dmp_norm = torch.nn.Sequential(
@@ -90,7 +92,7 @@ class QGNN(torch.nn.Module):
         att_weight = torch.sigmoid(torch.matmul(self.linA(x), self.linB(x).t()))
         edge_weight = att_weight[edge_index[0], edge_index[1]]
         if self.training:
-            mask = torch.bernoulli(torch.Tensor([1 - self.dropout_ratio] * edge_weight.size(0)))
+            mask = torch.bernoulli(torch.Tensor([1 - self.packet_loss] * edge_weight.size(0)))
             edge_weight = mask * edge_weight
         return edge_weight
 
