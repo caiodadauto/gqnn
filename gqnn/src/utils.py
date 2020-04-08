@@ -101,8 +101,8 @@ def save_model(model, optimizer, scheduler, loss, acc, n_batch, epoch, duration,
                  'optimizer_state_dict': optimizer.state_dict(),
                  'scheduler_state_dict': scheduler.state_dict()}
     if best:
-        torch.save(os.path.join(env_state, path, NAME_ENV_FILE + "_best.pt"))
-    torch.save(os.path.join(env_state, path, NAME_ENV_FILE + "_last.pt"))
+        torch.save(env_state, os.path.join(path, NAME_ENV_FILE + "_best.pt"))
+    torch.save(env_state, os.path.join(path, NAME_ENV_FILE + "_last.pt"))
 
 def save_info(n_epoch, n_batch, duration, loss, acc, path):
     if not os.path.isdir(path):
@@ -129,7 +129,10 @@ def load_model(model, path, optimizer=None, scheduler=None, test=False):
     last_batch = last_cp['n_batch']
     last_duration = last_cp['duration']
 
-    if not test:
+    if test:
+        model.load_state_dict(best_cp['model_state_dict'])
+        return best_batch, best_duration, best_acc
+    else:
         if not optimizer:
             raise ValueError("Need an initialized optimizer to load model")
         model.load_state_dict(last_cp['model_state_dict'])
@@ -137,9 +140,6 @@ def load_model(model, path, optimizer=None, scheduler=None, test=False):
         if scheduler:
             scheduler.load_state_dict(last_cp['scheduler_state_dict'])
         return last_batch, last_epoch, duration, best_acc, best_loss
-    else:
-        model.load_state_dict(best_cp['model_state_dict'])
-        return best_batch, best_duration, best_acc
 
 def train_step(model, data, optimizer, loss_fn, threshold, class_weight):
     optimizer.zero_grad()
@@ -185,7 +185,7 @@ def train(device, model, loader, optimizer, scheduler, loss_fn, epochs, path, th
                         best = True
                     else:
                         best = False
-                    save_model(model, optimizer, loss, acc, n_batch, epoch, duration, path, best)
+                    save_model(model, optimizer, scheduler, loss, acc, n_batch, epoch, duration, path, best)
                     save_info(epoch, n_batch, duration, loss, acc, path)
                 scheduler.step()
             n_batch += 1
@@ -232,7 +232,7 @@ def test(device, model, loader, path, threshold=.35):
     stats_path = os.path.join(path, NAME_STATS_DIR)
 
     best_batch, best_duration, best_acc = load_model(model, bkp_path, test=True)
-    print("Model loaded for the best training perform at batch {} after {} of training, where it achieved {} of balanced accuracy".format(
+    print("Best model loaded:\n\tAt batch: {}\n\tTraining duration: {:.4f}s\n\tAchieved ACC: {:.4f}".format(
             best_batch, best_duration, best_acc))
     model.eval()
 
