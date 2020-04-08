@@ -36,7 +36,7 @@ from .utils import from_data
 #    fig.clear()
 #    plt.close()
 
-def draw_batch(dataset, path):
+def draw_batch(dataset, path, logger=None):
     if not os.path.isdir(path):
         os.makedirs(path)
 
@@ -95,4 +95,6 @@ def draw_batch(dataset, path):
             G,
             pos,
             ax=ax)
+    if logger:
+        logger.info("Save graph input ilustration in {}".format(os.path.join(path, "graphs.png")))
     plt.savefig(os.path.join(path, "graphs.png"))

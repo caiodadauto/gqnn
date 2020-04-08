@@ -1,3 +1,4 @@
+import re
 import os
 import time
 
@@ -111,18 +112,29 @@ def save_info(n_epoch, n_batch, duration, loss, acc, path):
         f.write("{:d},{:d},{:.2f},{:.5f},{:.5f}\n".format(n_epoch, n_batch, duration, loss, acc))
 
 def is_previous_trainig(path):
-    last_file =  os.path.isfile(path + NAME_ENV_FILE + "_last.pt")
-    best_file =  os.path.isfile(path + NAME_ENV_FILE + "_best.pt")
+    last_file =  os.path.isfile(os.path.join(path, NAME_ENV_FILE + "_last.pt"))
+    best_file =  os.path.isfile(os.path.join(path, NAME_ENV_FILE + "_best.pt"))
     if last_file and best_file:
         return True
     return False
 
-def load_model(model, path, optimizer=None, scheduler=None, test=False):
+def state2str(cp, path):
+    s = ""
+    r = re.compile(r".*state.*")
+    root_path = path.split("/")[0]
+    for key, value in cp.items():
+        if r.match(key):
+            s += "        {}:  {}\n".format(key, "State saved in " + os.path.join(root_path, key))
+            with open(os.path.join(root_path, key), "w") as f:
+                f.write("{}".format(value))
+        else:
+            s += "        {}:  {}\n".format(key, value)
+    return s
+
+def load_model(model, path, optimizer=None, scheduler=None, test=False, logger=None):
     best_cp = torch.load(os.path.join(path, NAME_ENV_FILE + "_best.pt"))
     best_acc = best_cp['acc']
     best_loss = best_cp['loss']
-    best_batch = best_cp['n_batch']
-    best_duration = best_cp['duration']
 
     last_cp = torch.load(os.path.join(path, NAME_ENV_FILE + "_last.pt"))
     last_epoch = last_cp['epoch']
@@ -131,7 +143,8 @@ def load_model(model, path, optimizer=None, scheduler=None, test=False):
 
     if test:
         model.load_state_dict(best_cp['model_state_dict'])
-        return best_batch, best_duration, best_acc
+        if logger:
+            logger.info("Best model loaded:\n" + state2str(best_cp, path))
     else:
         if not optimizer:
             raise ValueError("Need an initialized optimizer to load model")
@@ -139,7 +152,9 @@ def load_model(model, path, optimizer=None, scheduler=None, test=False):
         optimizer.load_state_dict(last_cp['optimizer_state_dict'])
         if scheduler:
             scheduler.load_state_dict(last_cp['scheduler_state_dict'])
-        return last_batch, last_epoch, duration, best_acc, best_loss
+        if logger:
+            logger.info("Last model loaded:\n" + state2str(last_cp, path))
+        return last_batch, last_epoch, last_duration, best_acc, best_loss
 
 def train_step(model, data, optimizer, loss_fn, threshold, class_weight):
     optimizer.zero_grad()
@@ -153,18 +168,18 @@ def train_step(model, data, optimizer, loss_fn, threshold, class_weight):
     output_np = output.detach().cpu().numpy()
     return loss.item(), np.array(output_np > threshold, dtype=int), label
 
-def train(device, model, loader, optimizer, scheduler, loss_fn, epochs, path, threshold=.35, dt=20, class_weight=[1., 1.]):
+def train(device, model, loader, optimizer, scheduler, loss_fn, epochs, root_path, threshold=.35, dt=20, class_weight=[1., 1.], logger=None):
     n_batch = 0
     n_epoch = 0
     best_acc = 0
     last_batch = 0
     time_offset = 0
     best_loss = np.Inf
-    path = os.path.join(path, NAME_BKP_DIR)
+    path = os.path.join(root_path, NAME_BKP_DIR)
 
     if is_previous_trainig(path):
-        last_batch, n_epoch, time_offset, best_acc, best_loss = load_model(model, path, optimizer)
-        print("Last model loaded,\n\tLast batch: {}".format(last_batch))
+        last_batch, n_epoch, time_offset, best_acc, best_loss = load_model(model, path, optimizer, logger=logger)
+        #last_batch, n_epoch, time_offset, best_acc, best_loss = load_model(model, path, optimizer, scheduler, logger=logger)
 
     model.train()
     start_time = time.time()
@@ -187,7 +202,8 @@ def train(device, model, loader, optimizer, scheduler, loss_fn, epochs, path, th
                         best = False
                     save_model(model, optimizer, scheduler, loss, acc, n_batch, epoch, duration, path, best)
                     save_info(epoch, n_batch, duration, loss, acc, path)
-                scheduler.step()
+                # scheduler.step()
+            scheduler.step()
             n_batch += 1
         n_batch = 0
         last_batch = 0
@@ -227,13 +243,11 @@ def save_stats(df_stats, path):
         os.makedirs(path)
     df_stats.to_csv(os.path.join(path, NAME_STATS_FILE + ".csv"))
 
-def test(device, model, loader, path, threshold=.35):
-    bkp_path = os.path.join(path, NAME_BKP_DIR)
-    stats_path = os.path.join(path, NAME_STATS_DIR)
+def test(device, model, loader, root_path, threshold=.35, logger=None):
+    bkp_path = os.path.join(root_path, NAME_BKP_DIR)
+    stats_path = os.path.join(root_path, NAME_STATS_DIR)
 
-    best_batch, best_duration, best_acc = load_model(model, bkp_path, test=True)
-    print("Best model loaded:\n\tAt batch: {}\n\tTraining duration: {:.4f}s\n\tAchieved ACC: {:.4f}".format(
-            best_batch, best_duration, best_acc))
+    load_model(model, bkp_path, test=True, logger=logger)
     model.eval()
 
     data = next(iter(loader))

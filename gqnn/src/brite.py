@@ -15,10 +15,10 @@ from .utils import from_networkx
 
 
 class Brite(Dataset):
-    def __init__(self, root, transform=None, pre_transform=None, type_db="train", debug=False):#, version="v1.0", id_folder="", secrets_path=None):
+    def __init__(self, root, transform=None, pre_transform=None, type_db="train", logger=None):#, version="v1.0", id_folder="", secrets_path=None):
         self.type_db = type_db
-        self.debug = debug
         self._size = None
+        self.logger = logger
         self._raw_file_names = None
         self._processed_file_names = None
         super(Brite, self).__init__(root, transform, pre_transform)
@@ -34,14 +34,16 @@ class Brite(Dataset):
     @property
     def raw_file_names(self):
         if self._raw_file_names is None:
-            print("Call raw names")
+            if self.logger:
+                self.logger.info("Creating raw names")
             self._raw_file_names = [p.split("/")[-1] for p in glob.glob(os.path.join(self.raw_dir, "*.gpickle"))]
         return self._raw_file_names
 
     @property
     def processed_file_names(self):
         if self._processed_file_names is None:
-            print("Call processed names")
+            if self.logger:
+                self.logger.info("Creating processed names")
             self._processed_file_names = [p.split("/")[-1] for p in glob.glob(os.path.join(self.processed_dir, "data_*.pt"))]
         return self._processed_file_names
 
