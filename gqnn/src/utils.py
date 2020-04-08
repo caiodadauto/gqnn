@@ -88,7 +88,7 @@ def from_data(data):
         graphs.append(G)
     return graphs
 
-def save_model(model, optimizer, loss, acc, n_batch, epoch, duration, path, best):
+def save_model(model, optimizer, scheduler, loss, acc, n_batch, epoch, duration, path, best):
     if not os.path.isdir(path):
         os.makedirs(path)
 
@@ -98,10 +98,11 @@ def save_model(model, optimizer, loss, acc, n_batch, epoch, duration, path, best
                  'loss': loss,
                  'acc': acc,
                  'model_state_dict': model.state_dict(),
-                 'optimizer_state_dict': optimizer.state_dict()}
+                 'optimizer_state_dict': optimizer.state_dict(),
+                 'scheduler_state_dict': scheduler.state_dict()}
     if best:
-        torch.save(env_state, path + NAME_ENV_FILE + "_best.pt")
-    torch.save(env_state, path + NAME_ENV_FILE + "_last.pt")
+        torch.save(os.path.join(env_state, path, NAME_ENV_FILE + "_best.pt"))
+    torch.save(os.path.join(env_state, path, NAME_ENV_FILE + "_last.pt"))
 
 def save_info(n_epoch, n_batch, duration, loss, acc, path):
     if not os.path.isdir(path):
@@ -116,7 +117,7 @@ def is_previous_trainig(path):
         return True
     return False
 
-def load_model(model, path, optimizer=None, test=False):
+def load_model(model, path, optimizer=None, scheduler=None, test=False):
     best_cp = torch.load(os.path.join(path, NAME_ENV_FILE + "_best.pt"))
     best_acc = best_cp['acc']
     best_loss = best_cp['loss']
@@ -133,6 +134,8 @@ def load_model(model, path, optimizer=None, test=False):
             raise ValueError("Need an initialized optimizer to load model")
         model.load_state_dict(last_cp['model_state_dict'])
         optimizer.load_state_dict(last_cp['optimizer_state_dict'])
+        if scheduler:
+            scheduler.load_state_dict(last_cp['scheduler_state_dict'])
         return last_batch, last_epoch, duration, best_acc, best_loss
     else:
         model.load_state_dict(best_cp['model_state_dict'])
@@ -160,7 +163,8 @@ def train(device, model, loader, optimizer, scheduler, loss_fn, epochs, path, th
     path = os.path.join(path, NAME_BKP_DIR)
 
     if is_previous_trainig(path):
-        last_batch, n_epoch, time_offset, best_acc, best_loss = load_model(model, optimizer, path)
+        last_batch, n_epoch, time_offset, best_acc, best_loss = load_model(model, path, optimizer)
+        print("Last model loaded,\n\tLast batch: {}".format(last_batch))
 
     model.train()
     start_time = time.time()
