@@ -7,6 +7,35 @@ from torch_geometric.data import DataLoader
 
 from .utils import from_data
 
+
+#def draw_accs(df, path):
+#    fig = plt.figure(dpi=300)
+#    ax = fig.subplots(1, 1, sharey=False)
+#    if k == r"ACC":
+#        lmean = r"$\overline{ACC}$"
+#        file_name = "acc"
+#    elif k == r"TPR":
+#        lmean = r"$\overline{TPR}$"
+#        file_name = "true_acc"
+#    else:
+#        lmean = r"$\overline{TNR}$"
+#        file_name = "false_acc"
+
+#    sns.distplot(v_tr, ax=ax, hist_kws=dict(zorder=1, cumulative=True, density=True, range=(0,1), label=r"Non-Generalization, {} = {:.3f}".format(lmean, v_tr.mean())), kde_kws=dict(cumulative=True))
+#    sns.distplot(v_ge, ax=ax, hist_kws=dict(zorder=0, cumulative=True, density=True, range=(0,1), label=r"Generalization, {} = {:.3f}".format(lmean, v_ge.mean())), kde_kws=dict(cumulative=True))
+#    ax.set_xlabel(k)
+#    ax.set_ylabel("Cumulative Frequency")
+#    ax.legend()
+#    ax.set_yticks(np.arange(0, 1.25, .25))
+#    #plt.axhline(.5, ls="--", alpha=.7, c="k")
+#    #ax.xaxis.grid(True)
+#    ax.yaxis.grid(True)
+#    fig.tight_layout()
+#    plt.savefig(file_name + ".pdf", transparent=True)
+#    plt.show()
+#    fig.clear()
+#    plt.close()
+
 def draw_batch(dataset, path):
     if not os.path.isdir(path):
         os.makedirs(path)

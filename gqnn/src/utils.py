@@ -3,14 +3,19 @@ import time
 
 import torch
 import numpy as np
+import pandas as pd
 import networkx as nx
 from tqdm import tqdm
 from torch_geometric.data import Data
 from sklearn.metrics import balanced_accuracy_score
 
 
-NAME_ENV = "env_state"
-NAME_INFO = "info"
+NAME_INFO_FILE = "info"
+NAME_ENV_FILE = "env_state"
+NAME_STATS_FILE = "accs"
+
+NAME_STATS_DIR = "stats"
+NAME_BKP_DIR = "checkpoint"
 
 def from_networkx(G, G_target):
     def add_edge_nodes(edges, n_nodes):
@@ -95,34 +100,43 @@ def save_model(model, optimizer, loss, acc, n_batch, epoch, duration, path, best
                  'model_state_dict': model.state_dict(),
                  'optimizer_state_dict': optimizer.state_dict()}
     if best:
-        torch.save(env_state, path + NAME_ENV + "_best.pt")
-    torch.save(env_state, path + NAME_ENV + "_last.pt")
+        torch.save(env_state, path + NAME_ENV_FILE + "_best.pt")
+    torch.save(env_state, path + NAME_ENV_FILE + "_last.pt")
 
 def save_info(n_epoch, n_batch, duration, loss, acc, path):
     if not os.path.isdir(path):
         os.makedirs(path)
-    with open(os.path.join(path, NAME_INFO + ".csv"), "a") as f:
+    with open(os.path.join(path, NAME_INFO_FILE + ".csv"), "a") as f:
         f.write("{:d},{:d},{:.2f},{:.5f},{:.5f}\n".format(n_epoch, n_batch, duration, loss, acc))
 
 def is_previous_trainig(path):
-    last_file =  os.path.isfile(path + NAME_ENV + "_last.pt")
-    best_file =  os.path.isfile(path + NAME_ENV + "_best.pt")
+    last_file =  os.path.isfile(path + NAME_ENV_FILE + "_last.pt")
+    best_file =  os.path.isfile(path + NAME_ENV_FILE + "_best.pt")
     if last_file and best_file:
         return True
     return False
 
-def load_model(model, optimizer, path):
-    last_cp = torch.load(path + NAME_ENV + "_last.pt")
-    best_cp = torch.load(path + NAME_ENV + "_best.pt")
-
-    model.load_state_dict(last_cp['model_state_dict'])
-    optimizer.load_state_dict(last_cp['optimizer_state_dict'])
-    last_epoch = last_cp['epoch']
-    last_batch = last_cp['n_batch']
-    duration = last_cp['duration']
+def load_model(model, path, optimizer=None, test=False):
+    best_cp = torch.load(os.path.join(path, NAME_ENV_FILE + "_best.pt"))
     best_acc = best_cp['acc']
     best_loss = best_cp['loss']
-    return last_batch, last_epoch, duration, best_acc, best_loss
+    best_batch = best_cp['n_batch']
+    best_duration = best_cp['duration']
+
+    last_cp = torch.load(os.path.join(path, NAME_ENV_FILE + "_last.pt"))
+    last_epoch = last_cp['epoch']
+    last_batch = last_cp['n_batch']
+    last_duration = last_cp['duration']
+
+    if not test:
+        if not optimizer:
+            raise ValueError("Need an initialized optimizer to load model")
+        model.load_state_dict(last_cp['model_state_dict'])
+        optimizer.load_state_dict(last_cp['optimizer_state_dict'])
+        return last_batch, last_epoch, duration, best_acc, best_loss
+    else:
+        model.load_state_dict(best_cp['model_state_dict'])
+        return best_batch, best_duration, best_acc
 
 def train_step(model, data, optimizer, loss_fn, threshold, class_weight):
     optimizer.zero_grad()
@@ -143,7 +157,7 @@ def train(device, model, loader, optimizer, scheduler, loss_fn, epochs, path, th
     last_batch = 0
     time_offset = 0
     best_loss = np.Inf
-    path = os.path.join(path, "checkpoint/")
+    path = os.path.join(path, NAME_BKP_DIR)
 
     if is_previous_trainig(path):
         last_batch, n_epoch, time_offset, best_acc, best_loss = load_model(model, optimizer, path)
@@ -173,3 +187,52 @@ def train(device, model, loader, optimizer, scheduler, loss_fn, epochs, path, th
             n_batch += 1
         n_batch = 0
         last_batch = 0
+
+def split_per_graphs(x, n_inter):
+    cum_inter = np.cumsum(n_inter)
+    x_per_graphs = [x[(n - n_inter[i]):n] for i, n in enumerate(cum_inter)]
+    return x_per_graphs
+
+def true_positive_rate(expect, predict):
+    mask = expect == 1
+    return np.mean(expect[mask] == predict[mask])
+
+def true_negative_rate(expect, predict):
+    mask = expect == 0
+    return np.mean(expect[mask] == predict[mask])
+
+def get_stats(model, data, threshold):
+    output = model(data)
+    label_np = data.y.detach().cpu().numpy()
+    output_np = output.detach().cpu().numpy()
+    output_np = np.array(output_np > threshold, dtype=int)
+    num_interfaces_np = data.num_interfaces.detach().cpu().numpy()
+
+    stats = []
+    label_per_graphs = split_per_graphs(label_np, num_interfaces_np)
+    output_per_graphs = split_per_graphs(output_np, num_interfaces_np)
+    for expect, predict in zip(label_per_graphs, output_per_graphs):
+        acc = balanced_accuracy_score(expect, predict)
+        tpr = true_positive_rate(expect, predict)
+        tnr = true_negative_rate(expect, predict)
+        stats.append([acc, tpr, tnr])
+    return pd.DataFrame(stats, columns=["ACC", "TPR", "TNR"])
+
+def save_stats(df_stats, path):
+    if not os.path.isdir(path):
+        os.makedirs(path)
+    df_stats.to_csv(os.path.join(path, NAME_STATS_FILE + ".csv"))
+
+def test(device, model, loader, path, threshold=.35):
+    bkp_path = os.path.join(path, NAME_BKP_DIR)
+    stats_path = os.path.join(path, NAME_STATS_DIR)
+
+    best_batch, best_duration, best_acc = load_model(model, bkp_path, test=True)
+    print("Model loaded for the best training perform at batch {} after {} of training, where it achieved {} of balanced accuracy".format(
+            best_batch, best_duration, best_acc))
+    model.eval()
+
+    data = next(iter(loader))
+    data = data.to(device)
+    df_stats = get_stats(model, data, threshold)
+    save_stats(df_stats, stats_path)

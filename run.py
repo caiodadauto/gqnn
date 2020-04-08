@@ -3,7 +3,7 @@ import argparse
 
 import torch
 import numpy as np
-from gqnn import draw_batch, Brite, train, QGNN
+from gqnn import draw_batch, Brite, train, test, QGNN
 from torch_geometric.data import DataLoader
 
 
@@ -32,12 +32,10 @@ def weights(s):
         raise argparse.ArgumentTypeError("Class weights must be a sequence of two floats splited by commas")
     return l
 
-def run(root_path, data_path, type_db, delta_time, seed, debug,
+def run(perform, root_path, data_path, type_db, delta_time, seed, debug,
         epochs, batch_size, hidden_size, msgs, dropout_ratio, packet_loss, init_lr, loss_fn, threshold, decay, class_weight, milestones):
     torch.manual_seed(seed)
     np.random.seed(seed)
-
-    type_db = None if type_db == "" else type_db
     dataset = Brite(data_path, type_db=type_db, debug=debug)
 
     if debug:
@@ -45,17 +43,21 @@ def run(root_path, data_path, type_db, delta_time, seed, debug,
     loader = DataLoader(dataset, batch_size=batch_size)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = QGNN(out_channels=hidden_size, num_msg=msgs, dropout_ratio=dropout_ratio, packet_loss=packet_loss).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=init_lr, weight_decay=5e-4)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=decay)
-    train(device, model, loader, optimizer, scheduler, loss_fn, epochs, root_path, threshold, delta_time, class_weight)
+    if perform == "train":
+        optimizer = torch.optim.Adam(model.parameters(), lr=init_lr, weight_decay=5e-4)
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=decay)
+        train(device, model, loader, optimizer, scheduler, loss_fn, epochs, root_path, threshold, delta_time, class_weight)
+    else:
+        test(device, model, loader, root_path, threshold)
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     # Stting environment
+    p.add_argument("perform", type=str, choices=["test", "train"])
     p.add_argument("--root-path", type=str, default="assets/",
                    help="Directory where model and optimizer states, figures, and training information will be saved")
     p.add_argument("--data-path", type=str, default="assets/", help="Directory where dataset will be saved")
-    p.add_argument("--type_db", type=str, default="", choices=["", "train", "test_non_generalization", "test_generalization"],
+    p.add_argument("--type-db", type=str, default="train", choices=["train", "test_non_generalization", "test_generalization"],
                    help="Type of dataset")
     p.add_argument("--delta-time", type=float, default=20, help="Log time interval")
     p.add_argument("--seed", type=int, default=2, help="Seed for Pytorch random state")
@@ -76,5 +78,4 @@ if __name__ == "__main__":
     p.add_argument("--milestones", type=interval, default=[500, 2000, 3000, 6000],
                    help="Interval of steps where scheduler will decay the learning rate")
     args = p.parse_args()
-
     run(**vars(args))
