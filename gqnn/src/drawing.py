@@ -1,42 +1,56 @@
 import os
 
+import numpy as np
+import pandas as pd
+import seaborn as sns
 import networkx as nx
 import seaborn as sns
 import matplotlib.pyplot as plt
 from torch_geometric.data import DataLoader
 
-from .utils import from_data
+from .nxutils import from_data
 
 
-#def draw_accs(df, path):
-#    fig = plt.figure(dpi=300)
-#    ax = fig.subplots(1, 1, sharey=False)
-#    if k == r"ACC":
-#        lmean = r"$\overline{ACC}$"
-#        file_name = "acc"
-#    elif k == r"TPR":
-#        lmean = r"$\overline{TPR}$"
-#        file_name = "true_acc"
-#    else:
-#        lmean = r"$\overline{TNR}$"
-#        file_name = "false_acc"
+def get_dist_params(acc_name, type_name, v, cumulative=True):
+    names = dict(non_generalization="Non-Generalization",
+                 generalization="Generalization",
+                 ACC=r"$\overline{ACC}$",
+                 TPR=r"$\overline{TPR}$",
+                 TNR=r"$\overline{TNR}$")
+    hist_kws=dict(zorder=1,
+                  cumulative=True,
+                  density=True,
+                  range=(0,1),
+                  label=r"{}, {} = {:.3f}".format(names[type_name], names[acc_name], v.mean()))
+    kde_kws=dict(cumulative=cumulative)
+    return dict(hist_kws=hist_kws, kde_kws=kde_kws)
 
-#    sns.distplot(v_tr, ax=ax, hist_kws=dict(zorder=1, cumulative=True, density=True, range=(0,1), label=r"Non-Generalization, {} = {:.3f}".format(lmean, v_tr.mean())), kde_kws=dict(cumulative=True))
-#    sns.distplot(v_ge, ax=ax, hist_kws=dict(zorder=0, cumulative=True, density=True, range=(0,1), label=r"Generalization, {} = {:.3f}".format(lmean, v_ge.mean())), kde_kws=dict(cumulative=True))
-#    ax.set_xlabel(k)
-#    ax.set_ylabel("Cumulative Frequency")
-#    ax.legend()
-#    ax.set_yticks(np.arange(0, 1.25, .25))
-#    #plt.axhline(.5, ls="--", alpha=.7, c="k")
-#    #ax.xaxis.grid(True)
-#    ax.yaxis.grid(True)
-#    fig.tight_layout()
-#    plt.savefig(file_name + ".pdf", transparent=True)
-#    plt.show()
-#    fig.clear()
-#    plt.close()
+def draw_accuracies(path):
+    df = pd.read_csv(path)
+    types = df["Type"].unique()
+    accuracies = df.columns.to_list()
+    accuracies.remove("Type")
 
-def draw_batch(dataset, path, logger=None):
+    dir_name = os.path.dirname(path)
+    sns.set_style("ticks")
+    for acc_name in accuracies:
+        fig = plt.figure(dpi=300)
+        ax = fig.subplots(1, 1, sharey=False)
+        for type_name in types:
+            v = df[df["Type"] == type_name][acc_name].values
+            dist_params = get_dist_params(acc_name, type_name, v)
+            sns.distplot(v, ax=ax, **dist_params)
+        ax.set_xlabel(acc_name)
+        ax.set_ylabel("Cumulative Frequency")
+        ax.legend()
+        ax.set_yticks(np.arange(0, 1.25, .25))
+        ax.yaxis.grid(True)
+        fig.tight_layout()
+        plt.savefig(os.path.join(dir_name, acc_name + ".pdf"), transparent=True)
+        fig.clear()
+        plt.close()
+
+def draw_batch(dataset, path, name, logger=None):
     if not os.path.isdir(path):
         os.makedirs(path)
 
@@ -96,5 +110,5 @@ def draw_batch(dataset, path, logger=None):
             pos,
             ax=ax)
     if logger:
-        logger.info("Save graph input ilustration in {}".format(os.path.join(path, "graphs.png")))
-    plt.savefig(os.path.join(path, "graphs.png"))
+        logger.info("Save graph input ilustration in {}".format(os.path.join(path, name + ".png")))
+    plt.savefig(os.path.join(path, name + ".png"))

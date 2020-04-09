@@ -1,4 +1,4 @@
-from .drawing import draw_batch
+from .drawing import draw_batch, draw_accuracies
 from .brite import Brite
 from .gqnn import QGNN
-from .utils import train, test
+from .torchutils import train, test

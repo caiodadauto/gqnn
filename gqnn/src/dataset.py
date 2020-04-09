@@ -147,7 +147,8 @@ class Dataset(torch.utils.data.Dataset):
         if files_exist(self.raw_paths):  # pragma: no cover
             return
 
-        makedirs(self.raw_dir)
+        if not os.path.isdir(self.raw_dir):
+            makedirs(self.raw_dir)
         self.download()
 
     def _process(self):
@@ -171,7 +172,8 @@ class Dataset(torch.utils.data.Dataset):
 
         print('Processing...')
 
-        makedirs(self.processed_dir)
+        if not os.path.isdir(self.processed_dir):
+            makedirs(self.processed_dir)
         self.process()
 
         path = os.path.join(self.processed_dir, 'pre_transform.pt')
