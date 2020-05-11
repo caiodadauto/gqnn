@@ -35,11 +35,11 @@ def save_model(model, optimizer, scheduler, loss, acc, n_batch, epoch, duration,
         torch.save(env_state, os.path.join(path, NAME_ENV_FILE + "_best.pt"))
     torch.save(env_state, os.path.join(path, NAME_ENV_FILE + "_last.pt"))
 
-def save_info(n_epoch, n_batch, duration, loss, acc, path):
+def save_info(n_epoch, n_batch, duration, loss, acc_train, acc_valid, path):
     if not os.path.isdir(path):
         os.makedirs(path)
     with open(os.path.join(path, NAME_INFO_FILE + ".csv"), "a") as f:
-        f.write("{:d},{:d},{:.2f},{:.5f},{:.5f}\n".format(n_epoch, n_batch, duration, loss, acc))
+        f.write("{:d},{:d},{:.2f},{:.5f},{:.5f},{:.5f}\n".format(n_epoch, n_batch, duration, loss, acc_train, acc_valid))
 
 def is_previous_trainig(path):
     last_file =  os.path.isfile(os.path.join(path, NAME_ENV_FILE + "_last.pt"))
@@ -102,8 +102,14 @@ def train_step(model, data, optimizer, loss_fn, threshold, class_weight):
     output_np = output.detach().cpu().numpy()
     return loss.item(), np.array(output_np > threshold, dtype=int), label
 
-def train(device, model, train_loader, optimizer, scheduler, loss_fn, epochs, root_path,
-          threshold=.35, dt=20, class_weight=[1., 1.], logger=None, new_milestones=False):
+def model_eval(model, data, threshold):
+    output = model(data)
+    label_np = data.y.detach().cpu().numpy()
+    output_np = output.detach().cpu().numpy()
+    return np.array(output_np > threshold, dtype=int), label
+
+def train(device, model, train_loader, valid_non_generalization_loader, optimizer, scheduler, loss_fn, epochs,
+          root_path, threshold=.35, dt=20, class_weight=[1., 1.], logger=None, new_milestones=False):
     n_batch = 0
     n_epoch = 0
     best_acc = 0
@@ -126,24 +132,37 @@ def train(device, model, train_loader, optimizer, scheduler, loss_fn, epochs, ro
     model.train()
     start_time = time.time()
     last_log_time = start_time
+    valid_data = next(iter(valid_non_generalization_loader), None)
+    print(valid_data)
+    print(last_batch, best_acc, best_loss, time_offset)
     for epoch in range(n_epoch, epochs):
         for data in tqdm(train_loader):
             if n_batch > last_batch:
+                print("1")
                 data = data.to(device)
                 loss, output, label = train_step(model, data, optimizer, loss_fn, threshold, class_weight)
                 current_time = time.time()
+                print("2")
                 if current_time - last_log_time > dt:
+                    model.eval()
                     last_log_time = current_time
                     duration = current_time - start_time + time_offset
-                    acc = balanced_accuracy_score(label, output)
-                    if best_loss > loss and best_acc < acc:
-                        best_loss = loss
-                        best_acc = acc
+                    print("31")
+                    val_output, val_label = model_eval(model, valid_data, threshold)
+                    print("32")
+                    acc_train = balanced_accuracy_score(label, output)
+                    print("33")
+                    acc_valid = balanced_accuracy_score(val_label, val_output)
+                    print("34")
+                    if best_acc < acc_valid:
+                        best_acc = acc_valid
                         best = True
                     else:
                         best = False
-                    save_model(model, optimizer, scheduler, loss, acc, n_batch, epoch, duration, path, best)
-                    save_info(epoch, n_batch, duration, loss, acc, path)
+                    print("3")
+                    save_model(model, optimizer, scheduler, loss, acc_valid, n_batch, epoch, duration, path, best)
+                    save_info(epoch, n_batch, duration, loss, acc_train, acc_valid, path)
+                    model.train()
                 scheduler.step()
             n_batch += 1
         n_batch = 0

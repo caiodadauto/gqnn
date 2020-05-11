@@ -3,6 +3,7 @@ import json
 import argparse
 import logging
 import logging.handlers as handlers
+from pathlib import Path
 
 import torch
 import numpy as np
@@ -35,17 +36,22 @@ def weights(s):
         raise argparse.ArgumentTypeError("Class weights must be a sequence of two floats splited by commas")
     return l
 
+def get_db_size(name):
+    path = Path(name + "_raw")
+    return len(list(path.glob("*.gpickle")))
+
 def load_dataloader(perform, batch_size, path, logger):
     if perform == "train":
-        data_names = ["train"]
-    else:
-        data_names = ["test_non_generalization", "test_generalization"]
+        data_names = [("train", batch_size), ("valid_non_generalization", get_db_size(os.path.join(path, "valid_non_generalization")))]
+    # else:
+    #     data_names = [("test_non_generalization", get_db_size("test_non_generalization")),
+    #                   ("test_generalization", get_db_size("test_generalization"))]
 
     loader = {}
-    for dn in data_names:
+    for dn, btc in data_names:
         dataset = Brite(path, type_db=dn, logger=logger)
         draw_batch(dataset, path, logger=logger, name=dn + "_sample")
-        loader[dn + "_loader"] = DataLoader(dataset, batch_size=batch_size)
+        loader[dn + "_loader"] = DataLoader(dataset, batch_size=btc)
     return loader
 
 def save_args(args):
@@ -108,6 +114,5 @@ if __name__ == "__main__":
     args = p.parse_args()
     save_args(vars(args))
 
-
-    draw_accuracies("assets/stats/accuracies.csv")
-    #run(**vars(args))
+    run(**vars(args))
+    # draw_accuracies("assets/stats/accuracies.csv")

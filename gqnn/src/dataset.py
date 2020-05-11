@@ -146,6 +146,8 @@ class Dataset(torch.utils.data.Dataset):
     def _download(self):
         if files_exist(self.raw_paths):  # pragma: no cover
             return
+        if files_exist(self.processed_paths):  # pragma: no cover
+            return
 
         if not os.path.isdir(self.raw_dir):
             makedirs(self.raw_dir)

@@ -6,7 +6,7 @@ import subprocess as sub
 
 import torch
 import pandas as pd
-import pybrite as pb
+import pytop as pt
 from tqdm import tqdm
 
 from .dataset import Dataset
@@ -63,7 +63,7 @@ class Brite(Dataset):
 
     def process(self):
         for i, raw_path in enumerate(self.raw_paths):
-            parse_raw_data = pb.read_from_files([raw_path], bidim_solution=False)
+            parse_raw_data = pt.read_from_files([raw_path], bidim_solution=False)
             input_nx, target_nx = parse_raw_data[0][0], parse_raw_data[1][0]
             data = from_networkx(input_nx, target_nx)
             torch.save(data, os.path.join(self.processed_dir, 'data_{}.pt'.format(i)))

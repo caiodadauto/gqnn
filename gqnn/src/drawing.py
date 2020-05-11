@@ -55,7 +55,7 @@ def draw_batch(dataset, path, name, logger=None):
         os.makedirs(path)
 
     loader = DataLoader(dataset, batch_size=3)
-    batch = next(iter(loader))
+    batch = next(iter(loader), None)
     graphs = from_data(batch)
     n_graphs = len(graphs)
     fig, axs = plt.subplots(1, n_graphs, dpi=120, figsize=(12, 8))
