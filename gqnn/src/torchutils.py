@@ -101,14 +101,14 @@ def train_step(model, data, optimizer, loss_fn, threshold, class_weight):
     optimizer.step()
     label_np = data.y.detach().cpu().numpy()
     output_np = output.detach().cpu().numpy()
-    return loss.item(), np.array(output_np > threshold, dtype=int), label
+    return loss.item(), np.array(output_np > threshold, dtype=int), label_np
 
 @torch.no_grad()
 def model_eval(model, data, threshold):
     output = model(data)
     label_np = data.y.detach().cpu().numpy()
     output_np = output.detach().cpu().numpy()
-    return np.array(output_np > threshold, dtype=int), label
+    return np.array(output_np > threshold, dtype=int), label_np
 
 def train(device, model, train_loader, valid_non_generalization_loader, optimizer, scheduler, loss_fn, epochs,
           root_path, threshold=.35, dt=20, class_weight=[1., 1.], logger=None, new_milestones=False):

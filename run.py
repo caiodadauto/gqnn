@@ -47,7 +47,7 @@ def get_db_size(name):
 
 def load_dataloader(perform, batch_size, path, logger):
     if perform == "train":
-        data_names = [("train", batch_size), ("valid_non_generalization", get_db_size(os.path.join(path, "valid_non_generalization")))]
+        data_names = [("train", batch_size), ("valid_non_generalization", batch_size)]#get_db_size(os.path.join(path, "valid_non_generalization")))]
     # else:
     #     data_names = [("test_non_generalization", get_db_size("test_non_generalization")),
     #                   ("test_generalization", get_db_size("test_generalization"))]
