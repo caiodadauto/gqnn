@@ -90,6 +90,7 @@ def load_model(model, path, optimizer=None, scheduler=None, test=False, logger=N
             logger.info("Last model loaded:\n" + state2str(last_cp, path))
         return last_batch, last_epoch, last_duration, best_acc, best_loss
 
+@torch.enable_grad()
 def train_step(model, data, optimizer, loss_fn, threshold, class_weight):
     optimizer.zero_grad()
     output = model(data)
@@ -102,6 +103,7 @@ def train_step(model, data, optimizer, loss_fn, threshold, class_weight):
     output_np = output.detach().cpu().numpy()
     return loss.item(), np.array(output_np > threshold, dtype=int), label
 
+@torch.no_grad()
 def model_eval(model, data, threshold):
     output = model(data)
     label_np = data.y.detach().cpu().numpy()
@@ -133,33 +135,24 @@ def train(device, model, train_loader, valid_non_generalization_loader, optimize
     start_time = time.time()
     last_log_time = start_time
     valid_data = next(iter(valid_non_generalization_loader), None)
-    print(valid_data)
-    print(last_batch, best_acc, best_loss, time_offset)
     for epoch in range(n_epoch, epochs):
         for data in tqdm(train_loader):
             if n_batch > last_batch:
-                print("1")
                 data = data.to(device)
                 loss, output, label = train_step(model, data, optimizer, loss_fn, threshold, class_weight)
                 current_time = time.time()
-                print("2")
                 if current_time - last_log_time > dt:
                     model.eval()
                     last_log_time = current_time
                     duration = current_time - start_time + time_offset
-                    print("31")
                     val_output, val_label = model_eval(model, valid_data, threshold)
-                    print("32")
                     acc_train = balanced_accuracy_score(label, output)
-                    print("33")
                     acc_valid = balanced_accuracy_score(val_label, val_output)
-                    print("34")
                     if best_acc < acc_valid:
                         best_acc = acc_valid
                         best = True
                     else:
                         best = False
-                    print("3")
                     save_model(model, optimizer, scheduler, loss, acc_valid, n_batch, epoch, duration, path, best)
                     save_info(epoch, n_batch, duration, loss, acc_train, acc_valid, path)
                     model.train()

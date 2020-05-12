@@ -38,7 +38,12 @@ def weights(s):
 
 def get_db_size(name):
     path = Path(name + "_raw")
-    return len(list(path.glob("*.gpickle")))
+    if not os.path.isdir(path):
+        path = Path(name + "_processed")
+        size = len(list(path.glob("data*")))
+    else:
+        size = len(list(path.glob("*.gpickle")))
+    return size
 
 def load_dataloader(perform, batch_size, path, logger):
     if perform == "train":
