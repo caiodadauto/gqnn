@@ -47,16 +47,24 @@ def get_db_size(name):
 
 def load_dataloader(perform, batch_size, path, logger):
     if perform == "train":
-        data_names = [("train", batch_size), ("valid_non_generalization", batch_size)]#get_db_size(os.path.join(path, "valid_non_generalization")))]
-    # else:
-    #     data_names = [("test_non_generalization", get_db_size("test_non_generalization")),
-    #                   ("test_generalization", get_db_size("test_generalization"))]
+        data_names = [(path, "train", batch_size),
+                      (path, "valid_non_generalization", batch_size)]#get_db_size(os.path.join(path, "valid_non_generalization")))]
+    else:
+        data_names = []
+        for generator in ["brite", "zoo"]:
+            for type_db in ["generalization", "non_generalization"]:
+                for name_top in ["Star", "H&S", "Ladder"]:
+                    root = os.path.join(path, "test_" + generator + "_" + type_db)
+                    data_names.append( (root, name_top, 4) )#get_db_size(os.path.join(root, name_top))) )
 
     loader = {}
-    for dn, btc in data_names:
-        dataset = Brite(path, type_db=dn, logger=logger)
-        draw_batch(dataset, path, logger=logger, name=dn + "_sample")
-        loader[dn + "_loader"] = DataLoader(dataset, batch_size=btc)
+    for p, dn, btc in data_names:
+        dataset = Brite(p, type_db=dn, logger=logger)
+        draw_batch(dataset, p, logger=logger, name=dn + "_sample")
+        if perform == "train":
+            loader[dn + "_loader"] = DataLoader(dataset, batch_size=btc)
+        else:
+            loader[p.split("/")[-1] + "_" + dn] = DataLoader(dataset, batch_size=btc)
     return loader
 
 def save_args(args):
@@ -89,12 +97,12 @@ def run(perform, root_path, data_path, delta_time, seed, new_milestones,
               loss_fn=loss_fn, epochs=epochs, root_path=root_path, threshold=threshold, dt=delta_time,
               class_weight=class_weight, logger=file_logger, new_milestones=new_milestones, **loader)
     else:
-        test(device=device, model=model, root_path=root_path, threshold=threshold, logger=file_logger, **loader)
+        test(device=device, model=model, root_path=root_path, threshold=threshold, logger=file_logger, test_loaders=loader)
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     # Stting environment
-    p.add_argument("perform", type=str, choices=["test", "train"])
+    p.add_argument("perform", type=str, choices=["test", "train", "draw"])
     p.add_argument("--root-path", type=str, default="assets/",
                    help="Directory where model and optimizer states, figures, and training information will be saved")
     p.add_argument("--data-path", type=str, default="assets/", help="Directory where dataset will be saved")
@@ -119,5 +127,7 @@ if __name__ == "__main__":
     args = p.parse_args()
     save_args(vars(args))
 
-    run(**vars(args))
-    # draw_accuracies("assets/stats/accuracies.csv")
+    if args.perform != "draw":
+        run(**vars(args))
+    else:
+        draw_accuracies("assets/stats/accuracies.csv")

@@ -174,43 +174,56 @@ def true_negative_rate(expect, predict):
     mask = expect == 0
     return np.mean(expect[mask] == predict[mask])
 
-def get_stats(model, data, threshold, name):
-    output = model(data)
-    label_np = data.y.detach().cpu().numpy()
-    output_np = output.detach().cpu().numpy()
-    output_np = np.array(output_np > threshold, dtype=int)
-    num_interfaces_np = data.num_interfaces.detach().cpu().numpy()
+def get_stats(model, data, threshold, name, acc_file_path):
+    with torch.no_grad():
+        output = model(data)
+        label_np = data.y.detach().cpu().numpy()
+        output_np = output.detach().cpu().numpy()
+        output_np = np.array(output_np > threshold, dtype=int)
+        num_interfaces_np = data.num_interfaces.detach().cpu().numpy()
+        names = name.split("_")
+        if len(names) == 4:
+            _, generator, type_db, type_top = names
+        else:
+            _, generator, prefix_db, sufix_db, type_top = names
+            type_db = prefix_db + "_" + sufix_db
 
-    stats = []
-    label_per_graphs = split_per_graphs(label_np, num_interfaces_np)
-    output_per_graphs = split_per_graphs(output_np, num_interfaces_np)
-    for expect, predict in zip(label_per_graphs, output_per_graphs):
-        acc = balanced_accuracy_score(expect, predict)
-        tpr = true_positive_rate(expect, predict)
-        tnr = true_negative_rate(expect, predict)
-        stats.append([name, acc, tpr, tnr])
-    return pd.DataFrame(stats, columns=["Type", "ACC", "TPR", "TNR"])
+        stats = []
+        label_per_graphs = split_per_graphs(label_np, num_interfaces_np)
+        output_per_graphs = split_per_graphs(output_np, num_interfaces_np)
+        for expect, predict in zip(label_per_graphs, output_per_graphs):
+            acc = balanced_accuracy_score(expect, predict)
+            tpr = true_positive_rate(expect, predict)
+            tnr = true_negative_rate(expect, predict)
+            stats.append([generator, type_db, type_top, acc, tpr, tnr])
+    df_stats = pd.DataFrame(stats, columns=["Gen", "Type DB", "Type Top", "ACC", "TPR", "TNR"])
+    save_stats(acc_file_path, df_stats)
 
-def save_stats(df_stats, path):
-    name_file = os.path.join(path, NAME_ACC_FILE + ".csv")
-    if not os.path.isdir(path):
-        os.makedirs(path)
-    else:
-        if os.path.isfile(name_file):
-            df = pd.read_csv(name_file, header=0, index_col=False)
-            df_stats = pd.concat([df, df_stats], ignore_index=True)
+def save_stats(name_file, df_stats):
+    if os.path.isfile(name_file):
+        df = pd.read_csv(name_file, header=0, index_col=False)
+        df_stats = pd.concat([df, df_stats], ignore_index=True)
     df_stats.to_csv(name_file, index=False, header=True)
 
-def test(device, model, test_generalization_loader, test_non_generalization_loader, root_path, threshold=.35, logger=None):
+def test(device, model, test_loaders, root_path, threshold=.35, logger=None):
     bkp_path = os.path.join(root_path, NAME_BKP_DIR)
     stats_path = os.path.join(root_path, NAME_STATS_DIR)
-
     load_model(model, bkp_path, test=True, logger=logger)
+    acc_file_path = os.path.join(stats_path, NAME_ACC_FILE + ".csv")
+    if os.path.isfile(acc_file_path):
+        go = input("File {} already exists, do you want to overwrite it? [yN]".format(acc_file_path))
+        if not (go == "y" or go == "Y"):
+            print("File {} already exists.".format(acc_file_path))
+            exit(0)
+        else:
+            os.remove(acc_file_path)
+    if not os.path.isdir(stats_path):
+        os.makedirs(stats_path)
 
     model.eval()
-    for name, loader in [("non_generalization", test_non_generalization_loader), ("generalization", test_generalization_loader)]:
-        data = next(iter(loader))
-        data = data.to(device)
-        df_stats = get_stats(model, data, threshold, name)
-        save_stats(df_stats, stats_path)
-    draw_accuracies(os.path.join(stats_path, NAME_ACC_FILE + "csv"))
+    for loader_name, loader in test_loaders.items():
+        print("Processing " + loader_name)
+        for data in loader:
+            data = data.to(device)
+            get_stats(model, data, threshold, loader_name, acc_file_path)
+    draw_accuracies(acc_file_path)

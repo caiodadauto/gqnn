@@ -40,7 +40,7 @@ class Brite(Dataset):
 
     @property
     def processed_file_names(self):
-        if self._processed_file_names is None:
+        if self._processed_file_names is None or self._processed_file_names == []:
             if self._logger:
                 self._logger.info("Creating processed names")
             self._processed_file_names = [p.split("/")[-1] for p in glob.glob(os.path.join(self.processed_dir, "data_*.pt"))]
@@ -69,8 +69,7 @@ class Brite(Dataset):
             torch.save(data, os.path.join(self.processed_dir, 'data_{}.pt'.format(i)))
 
     def len(self):
-        if self._size is None:
-            self._size = len(self.processed_file_names)
+        self._size = len(self.processed_file_names)
         return self._size
 
     def get(self, idx):

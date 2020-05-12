@@ -138,7 +138,7 @@ class Dataset(torch.utils.data.Dataset):
     def processed_paths(self):
         r"""The filepaths to find in the :obj:`self.processed_dir`
         folder in order to skip the processing."""
-        if self._processed_paths is None:
+        if self._processed_paths is None or self._processed_paths == []:
             files = to_list(self.processed_file_names)
             self._processed_paths = [os.path.join(self.processed_dir, f) for f in files]
         return self._processed_paths

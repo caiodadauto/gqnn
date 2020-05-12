@@ -27,28 +27,36 @@ def get_dist_params(acc_name, type_name, v, cumulative=True):
 
 def draw_accuracies(path):
     df = pd.read_csv(path)
-    types = df["Type"].unique()
-    accuracies = df.columns.to_list()
-    accuracies.remove("Type")
-
+    types_db = df["Type DB"].unique()
+    generators = df["Gen"].unique()
+    types_top = df["Type Top"].unique()
+    accuracies = ["ACC", "TPR", "TNR"]
     dir_name = os.path.dirname(path)
+
     sns.set_style("ticks")
     for acc_name in accuracies:
-        fig = plt.figure(dpi=300)
-        ax = fig.subplots(1, 1, sharey=False)
-        for type_name in types:
-            v = df[df["Type"] == type_name][acc_name].values
-            dist_params = get_dist_params(acc_name, type_name, v)
-            sns.distplot(v, ax=ax, **dist_params)
-        ax.set_xlabel(acc_name)
-        ax.set_ylabel("Cumulative Frequency")
-        ax.legend()
-        ax.set_yticks(np.arange(0, 1.25, .25))
-        ax.yaxis.grid(True)
-        fig.tight_layout()
-        plt.savefig(os.path.join(dir_name, acc_name + ".pdf"), transparent=True)
-        fig.clear()
-        plt.close()
+        for g in generators:
+            dfgen = df[df["Gen"] == g]
+            for ttop in types_top:
+                dftop = dfgen[dfgen["Type Top"] == ttop]
+                fig = plt.figure(dpi=300)
+                ax = fig.subplots(1, 1, sharey=False)
+                for tdb in types_db:
+                    save_dir = os.path.join(dir_name, g, ttop)
+                    if not os.path.isdir(save_dir):
+                        os.makedirs(save_dir)
+                    v = dftop[dftop["Type DB"] == tdb][acc_name].values
+                    dist_params = get_dist_params(acc_name, tdb, v)
+                    sns.distplot(v, ax=ax, **dist_params)
+                ax.set_xlabel(acc_name)
+                ax.set_ylabel("Cumulative Frequency")
+                ax.legend()
+                ax.set_yticks(np.arange(0, 1.25, .25))
+                ax.yaxis.grid(True)
+                fig.tight_layout()
+                plt.savefig(os.path.join(save_dir, acc_name + ".pdf"), transparent=True)
+                fig.clear()
+                plt.close()
 
 def draw_batch(dataset, path, name, logger=None):
     if not os.path.isdir(path):
@@ -112,3 +120,4 @@ def draw_batch(dataset, path, name, logger=None):
     if logger:
         logger.info("Save graph input ilustration in {}".format(os.path.join(path, name + ".png")))
     plt.savefig(os.path.join(path, name + ".png"))
+    plt.close()
