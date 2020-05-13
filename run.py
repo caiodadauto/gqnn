@@ -48,14 +48,14 @@ def get_db_size(name):
 def load_dataloader(perform, batch_size, path, logger):
     if perform == "train":
         data_names = [(path, "train", batch_size),
-                      (path, "valid_non_generalization", batch_size)]#get_db_size(os.path.join(path, "valid_non_generalization")))]
+                      (path, "valid_non_generalization", batch_size)]
     else:
         data_names = []
         for generator in ["brite", "zoo"]:
-            for type_db in ["generalization", "non_generalization"]:
+            for type_db in ["non_generalization"]:
                 for name_top in ["Star", "H&S", "Ladder"]:
                     root = os.path.join(path, "test_" + generator + "_" + type_db)
-                    data_names.append( (root, name_top, 4) )#get_db_size(os.path.join(root, name_top))) )
+                    data_names.append( (root, name_top, 4) )
 
     loader = {}
     for p, dn, btc in data_names:

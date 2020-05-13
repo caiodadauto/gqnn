@@ -11,9 +11,9 @@ from torch_geometric.data import DataLoader
 from .nxutils import from_data
 
 
-def get_dist_params(acc_name, type_name, v, cumulative=True):
-    names = dict(non_generalization="Non-Generalization",
-                 generalization="Generalization",
+def get_dist_params(acc_name, generator_name, v, cumulative=True):
+    names = dict(zoo="Topology Zoo",
+                 brite="Brite",
                  ACC=r"$\overline{ACC}$",
                  TPR=r"$\overline{TPR}$",
                  TNR=r"$\overline{TNR}$")
@@ -21,8 +21,16 @@ def get_dist_params(acc_name, type_name, v, cumulative=True):
                   cumulative=True,
                   density=True,
                   range=(0,1),
-                  label=r"{}, {} = {:.3f}".format(names[type_name], names[acc_name], v.mean()))
+                  label=r"{}, {} = {:.3f}".format(names[generator_name], names[acc_name], v.mean()))
     kde_kws=dict(cumulative=cumulative)
+    if generator_name == "brite":
+        hist_kws["zorder"] = 5
+        kde_kws["zorder"] = 10
+    else:
+        hist_kws["zorder"] = 3
+        kde_kws["zorder"] = 9
+        hist_kws["hatch"] = "//"
+        kde_kws["ls"] = "--"
     return dict(hist_kws=hist_kws, kde_kws=kde_kws)
 
 def draw_accuracies(path):
@@ -35,28 +43,26 @@ def draw_accuracies(path):
 
     sns.set_style("ticks")
     for acc_name in accuracies:
-        for g in generators:
-            dfgen = df[df["Gen"] == g]
-            for ttop in types_top:
-                dftop = dfgen[dfgen["Type Top"] == ttop]
-                fig = plt.figure(dpi=300)
-                ax = fig.subplots(1, 1, sharey=False)
-                for tdb in types_db:
-                    save_dir = os.path.join(dir_name, g, ttop)
-                    if not os.path.isdir(save_dir):
-                        os.makedirs(save_dir)
-                    v = dftop[dftop["Type DB"] == tdb][acc_name].values
-                    dist_params = get_dist_params(acc_name, tdb, v)
-                    sns.distplot(v, ax=ax, **dist_params)
-                ax.set_xlabel(acc_name)
-                ax.set_ylabel("Cumulative Frequency")
-                ax.legend()
-                ax.set_yticks(np.arange(0, 1.25, .25))
-                ax.yaxis.grid(True)
-                fig.tight_layout()
-                plt.savefig(os.path.join(save_dir, acc_name + ".pdf"), transparent=True)
-                fig.clear()
-                plt.close()
+        for ttop in types_top:
+            dftop = df[df["Type Top"] == ttop]
+            fig = plt.figure(dpi=300)
+            ax = fig.subplots(1, 1, sharey=False)
+            for g in generators:
+                save_dir = os.path.join(dir_name, ttop)
+                if not os.path.isdir(save_dir):
+                    os.makedirs(save_dir)
+                v = dftop[dftop["Gen"] == g][acc_name].values
+                dist_params = get_dist_params(acc_name, g, v)
+                sns.distplot(v, bins="fd", ax=ax, **dist_params)
+            ax.set_xlabel(acc_name)
+            ax.set_ylabel("Cumulative Frequency")
+            ax.legend()
+            ax.set_yticks(np.arange(0, 1.25, .25))
+            ax.yaxis.grid(True)
+            fig.tight_layout()
+            plt.savefig(os.path.join(save_dir, acc_name + ".pdf"), transparent=True)
+            fig.clear()
+            plt.close()
 
 def draw_batch(dataset, path, name, logger=None):
     if not os.path.isdir(path):
