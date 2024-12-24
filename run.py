@@ -53,7 +53,7 @@ def load_dataloader(perform, batch_size, path, logger):
         data_names = []
         for generator in ["brite", "zoo"]:
             for type_db in ["non_generalization"]:
-                for name_top in ["Star", "H&S", "Ladder"]:
+                for name_top in ["Star", "H&S", "Ladder", "All"]:
                     root = os.path.join(path, "test_" + generator + "_" + type_db)
                     data_names.append( (root, name_top, 4) )
 
